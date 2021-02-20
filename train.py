@@ -13,6 +13,9 @@ from data.create_data import TrainDataset
 from data.create_data import TestDataset
 from model import Resnet50FCN
 
+from PIL import Image
+import numpy as np
+
 def main():
     # parsers
     main_parser = argparse.ArgumentParser(description="parser for Resnet50FCN network")
@@ -136,6 +139,17 @@ def train(args):
     ## Save the testing results
     print("Running testset")
     print('===> Loading testset')
+
+    img_save_dir = "./result/image/"
+
+    if not os.path.exists(img_save_dir):
+        os.makedirs(img_save_dir)
+
+    pre_save_dir = "./result/pre/"
+
+    if not os.path.exists(pre_save_dir):
+        os.makedirs(pre_save_dir)
+
     test_set = TestDataset(image_dir=test_path)
     test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
     print('===> Start testing')
@@ -145,9 +159,19 @@ def train(args):
             img = img.to(device)
             seg_pre = net(img)
             seg = seg_pre.data.max(1)[1]  # for visualization
-            if i % 20 == 0:
-                writer.add_image('image/epoch' + str(i) + 'img', (img.cpu().numpy()[0, :, :, :] + 1) / 2.0)
-                writer.add_image('image/epoch' + str(i) + 'seg', seg.unsqueeze(1).cpu().numpy()[0, :, :, :])
+            img_numpy = np.asarray((img.cpu().numpy()[0, :, :, :] + 1) / 2.0 * 255, dtype=np.uint8).transpose(1, 2, 0)
+            print(img_numpy.shape)
+            img_pil = Image.fromarray(img_numpy)
+            img_pil.save(img_save_dir + "img" + str(i) + ".jpg")
+
+            pre_numpy = np.repeat(np.asarray(seg.unsqueeze(1).cpu().numpy()[0, :, :, :] * 255, dtype=np.uint8).transpose(1, 2, 0), 3, axis=2)
+            print(pre_numpy.shape)
+            pre_pil = Image.fromarray(pre_numpy)
+            pre_pil.save(pre_save_dir + "pre" + str(i) + ".jpg")
+            print(i)
+            # if i % 20 == 0:
+            #     writer.add_image('image/epoch' + str(i) + 'img', (img.cpu().numpy()[0, :, :, :] + 1) / 2.0)
+            #     writer.add_image('image/epoch' + str(i) + 'seg', seg.unsqueeze(1).cpu().numpy()[0, :, :, :])
 
 # poly learning rate
 def lr_poly(base_lr, iter, max_iter, power):
